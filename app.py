@@ -16,7 +16,7 @@ class ImageGenerator:
 def inference(prompt, image, seed, size_level):
     return image, 42
 
-st.set_page_config(page_title="Step1X Edit", layout="centered")
+st.set_page_config(page_title="Ghibli style", layout="centered")
 st.title("🖼️ Ghibli style for Free : AI Image Editing")
 st.markdown("Ghibli style images with AI.")
 
@@ -57,15 +57,8 @@ if generate_button and uploaded_image is not None:
     st.success(f"✅ Done in {end - start:.2f} seconds — Seed used: {used_seed}")
     st.image(result_image, caption="🖼️ Edited Image", use_column_width=True)
 
-# === Example Prompts & Demos ===
-st.markdown("### 🔁 Try Example Prompts")
 
-example_prompts = [
-    ("examples/meme.jpg", "Turn into an illustration in Studio Ghibli style"),
-    ("examples/celeb_meme.jpg", "Replace the gray blazer with a leather jacket"),
-    ("examples/cookie.png", "Remove the cookie"),
-    ("examples/poster_orig.jpg", "Replace 'lambs' with 'llamas'"),
-]
+
 
 for path, ex_prompt in example_prompts:
     cols = st.columns([1, 2])
