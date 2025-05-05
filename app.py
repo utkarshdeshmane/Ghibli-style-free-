@@ -3,26 +3,52 @@ from PIL import Image
 import torch
 import os
 import time
+import tempfile
 from huggingface_hub import snapshot_download
-import threading
 
-# Define ImageGenerator class for model setup
 class ImageGenerator:
     def __init__(self, ae_path, dit_path, qwen2vl_model_path, max_length=640):
-        # Initialize model weights and parameters
+        # Initialize the model with the provided paths
         self.ae_path = ae_path
         self.dit_path = dit_path
         self.qwen2vl_model_path = qwen2vl_model_path
         self.max_length = max_length
-
-    def to_cuda(self):
-        # Code to transfer model to CUDA device (GPU) for faster computation
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # You should load the model weights to the device here
-        # Example: self.model.to(self.device)
-        pass
+        self.load_model()
 
-# Cache model loading function
+    def load_model(self):
+        # Load model weights or any necessary model setup here
+        pass
+    
+    def to_cuda(self):
+        # Move model to GPU if available
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Example: Loading your model (use actual code to load)
+        self.model = torch.load(self.ae_path, map_location=self.device)
+        # Additional model loading logic for your specific case
+
+def inference(prompt, image, seed, size_level, model):
+    # Add model prediction logic here
+    # Example: Pass image and prompt to the model to generate output
+    # Modify according to your actual model's inference code
+    result_image = image  # Placeholder, replace with actual generation logic
+    used_seed = seed if seed != -1 else int(time.time())  # Use random seed if -1
+    return result_image, used_seed
+
+# Set page config for better UI layout
+st.set_page_config(page_title="Ghibli style", layout="centered")
+st.title("🖼️ Ghibli style for Free : AI Image Editing")
+st.markdown("Ghibli style images with AI.")
+
+# === User Inputs ===
+prompt = "Turn into an illustration in Studio Ghibli style"
+uploaded_image = st.file_uploader("📤 Upload an Image", type=["jpg", "jpeg", "png"])
+seed = st.number_input("🎲 Random Seed (-1 for random)", value=-1, step=1)
+size_level = st.number_input("📐 Size Level (minimum 512)", value=512, min_value=512, step=32)
+
+generate_button = st.button("🚀 Generate")
+
+# === Load Model (Cached) ===
 @st.cache_resource
 def load_model():
     repo = "stepfun-ai/Step1X-Edit"
@@ -36,44 +62,28 @@ def load_model():
         qwen2vl_model_path='Qwen/Qwen2.5-VL-7B-Instruct',
         max_length=640
     )
-    model.to_cuda()
     return model
 
-# Placeholder for image inference (replace with actual function)
-def inference(prompt, image, seed, size_level):
-    # Simulate processing and return the image after "editing"
-    return image, seed if seed != -1 else int(time.time())
-
-# Streamlit UI setup
-st.set_page_config(page_title="Ghibli style", layout="centered")
-st.title("🖼️ Ghibli style for Free : AI Image Editing")
-st.markdown("Ghibli style images with AI.")
-
-# === User Inputs ===
-prompt = "Turn into an illustration in Studio Ghibli style"
-uploaded_image = st.file_uploader("📤 Upload an Image", type=["jpg", "jpeg", "png"], max_size=5*1024*1024)  # Max size 5MB
-seed = st.number_input("🎲 Random Seed (-1 for random)", value=-1, step=1)
-size_level = st.number_input("📐 Size Level (minimum 512)", value=512, min_value=512, step=32)
-
-generate_button = st.button("🚀 Generate")
-
-# Load model (cached)
 image_edit_model = load_model()
 
-# Function to run inference in a separate thread
-def run_inference(prompt, image, seed, size_level):
-    result_image, used_seed = inference(prompt, image, seed, size_level)
-    st.session_state['result'] = result_image
-    st.session_state['used_seed'] = used_seed
-
-# Display result after inference
+# === Inference and Image Display ===
 if generate_button and uploaded_image is not None:
     input_image = Image.open(uploaded_image).convert("RGB")
+    # Resize image for faster inference (adjust to your model's requirements)
+    input_image.thumbnail((size_level, size_level))
     
-    # Run inference in a separate thread to avoid blocking the UI
-    threading.Thread(target=run_inference, args=(prompt, input_image, seed, size_level)).start()
+    with st.spinner("🔄 Generating edited image..."):
+        start = time.time()
+        try:
+            result_image, used_seed = inference(prompt, input_image, seed, size_level, image_edit_model)
+            end = time.time()
 
-    # Show the result after inference is done
-    if 'result' in st.session_state:
-        st.success(f"✅ Done! Seed used: {st.session_state['used_seed']}")
-        st.image(st.session_state['result'], caption="🖼️ Edited Image", use_column_width=True)
+            st.success(f"✅ Done in {end - start:.2f} seconds — Seed used: {used_seed}")
+            
+            # Save and display the result in temporary file
+            with tempfile.NamedTemporaryFile(dir="/tmp", delete=False, suffix=".png") as temp_file:
+                result_image.save(temp_file.name)
+                st.image(temp_file.name, caption="🖼️ Edited Image", use_column_width=True)
+        except Exception as e:
+            st.error(f"❌ Inference failed: {e}")
+            st.stop()
