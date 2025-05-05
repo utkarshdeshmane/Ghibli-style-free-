@@ -3,22 +3,27 @@ from PIL import Image
 import torch
 import os
 import time
+import tempfile
 from huggingface_hub import snapshot_download
 
-
+# === Dummy ImageGenerator for Placeholder ===
 class ImageGenerator:
     def __init__(self, ae_path, dit_path, qwen2vl_model_path, max_length=640):
-        pass
+        # You would load your actual model components here
+        self.initialized = True
 
     def to_cuda(self):
+        # Move model to GPU if needed
         pass
 
 def inference(prompt, image, seed, size_level):
-    return image, 42
+    # Dummy inference for now — Replace with actual image editing logic
+    return image, 42  # Echo the image and a fixed seed
 
+# === Streamlit UI Setup ===
 st.set_page_config(page_title="Ghibli style", layout="centered")
 st.title("🖼️ Ghibli style for Free : AI Image Editing")
-st.markdown("Ghibli style images with AI.")
+st.markdown("Convert your image into a **Studio Ghibli-style illustration** using AI.")
 
 # === User Inputs ===
 prompt = "Turn into an illustration in Studio Ghibli style"
@@ -28,7 +33,7 @@ size_level = st.number_input("📐 Size Level (minimum 512)", value=512, min_val
 
 generate_button = st.button("🚀 Generate")
 
-# === Load Model (Cached) ===
+# === Load Model with Cache ===
 @st.cache_resource
 def load_model():
     repo = "stepfun-ai/Step1X-Edit"
@@ -47,16 +52,26 @@ def load_model():
 
 image_edit_model = load_model()
 
-if generate_button and uploaded_image is not None:
-    input_image = Image.open(uploaded_image).convert("RGB")
-    with st.spinner("🔄 Generating edited image..."):
-        start = time.time()
-        result_image, used_seed = inference(prompt, input_image, seed, size_level)
-        end = time.time()
+# === Processing Image ===
+if generate_button:
+    if uploaded_image is None:
+        st.warning("Please upload an image first.")
+    else:
+        try:
+            input_image = Image.open(uploaded_image).convert("RGB")
 
-    st.success(f"✅ Done in {end - start:.2f} seconds — Seed used: {used_seed}")
-    st.image(result_image, caption="🖼️ Edited Image", use_column_width=True)
+            # Save to /tmp for compatibility
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png", dir="/tmp") as tmp:
+                input_image.save(tmp.name)
+                tmp_path = tmp.name
 
+            with st.spinner("🔄 Generating edited image..."):
+                start = time.time()
+                result_image, used_seed = inference(prompt, input_image, seed, size_level)
+                end = time.time()
 
+            st.success(f"✅ Done in {end - start:.2f} seconds — Seed used: {used_seed}")
+            st.image(result_image, caption="🖼️ Edited Image", use_column_width=True)
 
-
+        except Exception as e:
+            st.error(f"❌ Error processing image: {e}")
