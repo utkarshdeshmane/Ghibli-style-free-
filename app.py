@@ -6,24 +6,31 @@ import time
 import tempfile
 from huggingface_hub import snapshot_download
 
-# === Dummy ImageGenerator for Placeholder ===
+
 class ImageGenerator:
     def __init__(self, ae_path, dit_path, qwen2vl_model_path, max_length=640):
-        # You would load your actual model components here
-        self.initialized = True
+        # Initialize the model with the provided paths
+        self.ae_path = ae_path
+        self.dit_path = dit_path
+        self.qwen2vl_model_path = qwen2vl_model_path
+        self.max_length = max_length
 
     def to_cuda(self):
-        # Move model to GPU if needed
+        # Move model to GPU if available
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Load your model to the correct device
         pass
 
-def inference(prompt, image, seed, size_level):
-    # Dummy inference for now — Replace with actual image editing logic
-    return image, 42  # Echo the image and a fixed seed
 
-# === Streamlit UI Setup ===
+def inference(prompt, image, seed, size_level):
+    # Add logic for your inference, model prediction, etc.
+    return image, seed
+
+
+# Set page config for better UI layout
 st.set_page_config(page_title="Ghibli style", layout="centered")
 st.title("🖼️ Ghibli style for Free : AI Image Editing")
-st.markdown("Convert your image into a **Studio Ghibli-style illustration** using AI.")
+st.markdown("Ghibli style images with AI.")
 
 # === User Inputs ===
 prompt = "Turn into an illustration in Studio Ghibli style"
@@ -33,7 +40,7 @@ size_level = st.number_input("📐 Size Level (minimum 512)", value=512, min_val
 
 generate_button = st.button("🚀 Generate")
 
-# === Load Model with Cache ===
+# === Load Model (Cached) ===
 @st.cache_resource
 def load_model():
     repo = "stepfun-ai/Step1X-Edit"
@@ -52,26 +59,25 @@ def load_model():
 
 image_edit_model = load_model()
 
-# === Processing Image ===
-if generate_button:
-    if uploaded_image is None:
-        st.warning("Please upload an image first.")
-    else:
+# === Inference and Image Display ===
+if generate_button and uploaded_image is not None:
+    input_image = Image.open(uploaded_image).convert("RGB")
+    # Resize image for faster inference (adjust to your model's requirements)
+    input_image.thumbnail((size_level, size_level))
+    
+    with st.spinner("🔄 Generating edited image..."):
+        start = time.time()
         try:
-            input_image = Image.open(uploaded_image).convert("RGB")
-
-            # Save to /tmp for compatibility
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png", dir="/tmp") as tmp:
-                input_image.save(tmp.name)
-                tmp_path = tmp.name
-
-            with st.spinner("🔄 Generating edited image..."):
-                start = time.time()
-                result_image, used_seed = inference(prompt, input_image, seed, size_level)
-                end = time.time()
+            result_image, used_seed = inference(prompt, input_image, seed, size_level)
+            end = time.time()
 
             st.success(f"✅ Done in {end - start:.2f} seconds — Seed used: {used_seed}")
-            st.image(result_image, caption="🖼️ Edited Image", use_column_width=True)
-
+            
+            # Save and display the result in temporary file
+            with tempfile.NamedTemporaryFile(dir="/tmp", delete=False, suffix=".png") as temp_file:
+                result_image.save(temp_file.name)
+                st.image(temp_file.name, caption="🖼️ Edited Image", use_column_width=True)
         except Exception as e:
-            st.error(f"❌ Error processing image: {e}")
+            st.error(f"❌ Inference failed: {e}")
+            st.stop()
+
