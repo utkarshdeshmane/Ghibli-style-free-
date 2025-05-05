@@ -1,10 +1,9 @@
-einops==0.8.1
-flash_attn==2.7.4.post1
-huggingface_hub==0.30.2
-numpy==2.2.5
-Pillow==11.2.1
-qwen_vl_utils==0.0.11
 streamlit==1.44.1
-torch==2.6.0
-torchvision==0.21.0
+Pillow==11.2.1
+huggingface_hub==0.30.2
 transformers==4.51.3
+einops==0.8.1
+torch==2.2.2+cpu
+torchvision==0.17.2+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+numpy==1.26.4
