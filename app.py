@@ -60,15 +60,3 @@ if generate_button and uploaded_image is not None:
 
 
 
-for path, ex_prompt in example_prompts:
-    cols = st.columns([1, 2])
-    with cols[0]:
-        st.image(path, caption="Input Example", use_column_width=True)
-    with cols[1]:
-        st.write(f"**Prompt:** {ex_prompt}")
-        if st.button(f"Try: {ex_prompt}", key=path):
-            img = Image.open(path).convert("RGB")
-            with st.spinner("🧠 Generating example result..."):
-                result_image, used_seed = inference(ex_prompt, img, -1, 512)
-            st.image(result_image, caption="🎨 Output Example", use_column_width=True)
-            st.write(f"Seed used: {used_seed}")
